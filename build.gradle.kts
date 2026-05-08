@@ -186,3 +186,26 @@ tasks.withType<KotlinJsTest>().all {
         dependsOn(wasmtimeRunTask)
     }
 }
+
+tasks.register("runWasm", Exec::class) {
+    dependsOn(unzipWasmtime, "compileDevelopmentExecutableKotlinWasmWasi")
+
+    group = "run"
+    description = "Compiles the Wasm/WASI binary and runs it with Wasmtime"
+
+    standardInput = System.`in`
+
+    val wasmtimeDir = unzipWasmtime.get().destinationDir.resolve(wasmtimeArtifactName)
+    executable = wasmtimeDir.resolve(if (currentOsType.name == OsName.WINDOWS) "wasmtime.exe" else "wasmtime").absolutePath
+
+    doFirst {
+        val execDir = layout.buildDirectory
+            .dir("compileSync/wasmWasi/main/developmentExecutable/kotlin")
+            .get().asFile
+
+        val wasmFile = execDir.listFiles { file ->
+            file.extension == "wasm"
+        }.firstOrNull()
+        args("-W", "function-references,gc,exceptions", wasmFile?.absolutePath)
+    }
+}
